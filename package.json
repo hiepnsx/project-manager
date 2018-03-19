@@ -1,0 +1,16 @@
+{
+  "name": "project-manager",
+  "version": "1.0.0",
+  "description": "",
+  "main": "project-manager.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@octokit/rest": "^15.2.4",
+    "dotenv": "^5.0.1",
+    "github-webhook-handler": "^0.7.1"
+  }
+}
