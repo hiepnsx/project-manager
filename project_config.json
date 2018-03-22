@@ -1,0 +1,24 @@
+{
+  "labels": [
+    "開発依頼",
+    "調査依頼",
+    "見積もり依頼"
+  ],
+  "users": [
+    {
+      "name": "シン",
+      "chatworkID": "775611",
+      "githubID": "hiepnsx"
+    }
+  ],
+  "projects": [
+    {
+      "projectName": "laravel-test",
+      "confirmColumnID": "2383207"
+    },
+    {
+      "projectName": "thanksgift-app",
+      "confirmColumnID": "2383207"
+    }
+  ]
+}
