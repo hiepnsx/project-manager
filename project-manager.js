@@ -35,13 +35,12 @@ function findObjByField(arr, field, value) {
   return arr.find(obj => obj[field] === value);
 }
 
-const config = JSON.parse(fs.readFileSync('project_config.json', 'utf8'));
-cons
+const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
 
 
 // Github Handler
-function githubHandler(project, req, res) {
+function githubHandler(req, res) {
   console.log('got Github event!\n');
   handler(req, res, function () {
     res.statusCode = 404;
@@ -50,11 +49,16 @@ function githubHandler(project, req, res) {
 }
 
 handler.on('project_card', function (event) {
-  console.log(event);
+  // console.log(event);
 })
 
+function end(res) {
+  res.writeHead(200, {'Content-Type': 'text/plain'})
+  res.end('END!\n')
+}
+
 // Chatwork Handler
-function chatworkHandler(project, req, res) {
+function chatworkHandler(projectName, req, res) {
   console.log('got Chatwork event!\n');
   if (req.method !== 'POST') {
     res.statusCode = 404;
@@ -62,9 +66,11 @@ function chatworkHandler(project, req, res) {
     return;
   }
 
-  if (!findObjByField(config, 'projectName', project)) {
+  const project = findObjByField(config.projects, 'projectName', projectName);
+  if (!project) {
     res.statusCode = 404;
-    res.end('Project: ' + project + ' not in support list!');
+    console.log('Project: ' + projectName + ' not in support list!');
+    res.end('Project: ' + projectName + ' not in support list!');
     return;
   }
 
@@ -74,27 +80,59 @@ function chatworkHandler(project, req, res) {
   })
 
   req.on('end', function () {
-    let result = JSON.parse(resultString);
+    const result = JSON.parse(resultString)
     // console.log(result.webhook_event);
-    const taskContent = result.webhook_event.body;
-    if (TASK_REGEX.test(taskContent) === true) {
-      let requestContent = TASK_REGEX.exec(taskContent)[3];
-      if (requestContent.trim()) {
-        let messages = requestContent.split("\n");
-        console.log(messages);
-        // octokit.projects.createProjectCard({column_id: 2348257, note: matches[3]}).then(res => {
-        //
-        // })
+    const taskContent = result.webhook_event.body
 
-        let issueTemplate = fs.readFileSync('development_request_template.md', 'utf8');
-
-        octokit.issues.create({owner: "verve-inc", repo: "laravel-test", title: "タイトル", body: issueTemplate, assignee: "hiepnsx", labels: ["機能追加"]}).then(res => {
-
-        })
-      }
+    if (TASK_REGEX.test(taskContent) !== true) {
+      console.log("Message isn't task!\n" + taskContent)
+      return end(res);
     }
-    res.writeHead(200, {'Content-Type': 'text/plain'})
-    res.end('Success!\n')
+
+    const taskArr         = TASK_REGEX.exec(taskContent),
+          assigneeID      = taskArr[1],
+          requestContent  = taskArr[3],
+          deadlineDate    = new Date(taskArr[2]*1000),
+          deadline = deadlineDate.getFullYear() + "/" +  (deadlineDate.getMonth() + 1) + "/"+ deadlineDate.getDate()  + "/" + deadlineDate.getDay();
+
+    console.log("assigneeID: " + assigneeID);
+    const user = findObjByField(config.users, 'chatworkID', assigneeID);
+
+    if (!requestContent.trim()) {
+      console.log("Message empty!")
+      return end(res);
+    }
+
+    const messages      = requestContent.split('\n'),
+          patternType   = messages[0],
+          issueName     = messages[1],
+          issueOverview = messages.slice(2).join("\n"),
+          pattern       = findObjByField(config.pattern, 'type', patternType);
+
+    if (!pattern) {
+      console.log("Message pattern isn't supported!\n" + patternType)
+      return end(res);
+    }
+
+    const issueTemplate = fs.readFileSync(pattern.template, 'utf8');
+    const issueContent = issueTemplate.replace(/__OVERVIEW__/g, issueOverview)
+                                      .replace(/__DEADLINE__/g, deadline);
+
+    octokit.issues.create({
+      owner: project.owner,
+      repo: project.projectName,
+      title: issueName,
+      body: issueContent,
+      assignee: user.githubID,
+      labels: [pattern.type]
+    }).then(issRes => {
+      console.log(issRes.data.id);
+      octokit.projects.createProjectCard({column_id: project.confirmColumnID, content_id: issRes.data.id, content_type: "Issue"}).then(cardRes => {
+        console.log(cardRes);
+      })
+
+    })
+
   })
 
 }
@@ -106,14 +144,13 @@ https.createServer(
     ca: [fs.readFileSync(process.env.CHAIN), fs.readFileSync(process.env.FULL_CHAIN)]
   },
   (req, res) => {
-    const requestURL = url.parse(req.url);
-    const project = requestURL.query.project;
+    const requestURL = url.parse(req.url, true);
     switch(requestURL.pathname) {
       case process.env.GITHUB_WH_URL:
-        githubHandler(project, req, res);
+        githubHandler(req, res);
         break;
       case process.env.CHATWORK_WH_URL:
-        chatworkHandler(project, req, res);
+        chatworkHandler(requestURL.query.project, req, res);
         break;
       default:
         console.log("Unhandled event! Request: " + req.pathname);

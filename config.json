@@ -1,0 +1,35 @@
+{
+  "pattern": [
+    {
+      "type": "開発依頼",
+      "template": "development_request_template.md"
+    },
+    {
+      "type": "調査依頼",
+      "template": "investigation_request_template.md"
+    },
+    {
+      "type": "見積もり依頼",
+      "template": "estimate_request_template.md"
+    }
+  ],
+  "users": [
+    {
+      "name": "シン",
+      "chatworkID": "775611",
+      "githubID": "hiepnsx"
+    }
+  ],
+  "projects": [
+    {
+      "owner": "verve-inc",
+      "projectName": "laravel-test",
+      "confirmColumnID": "2383207"
+    },
+    {
+      "owner": "verve-inc",
+      "projectName": "thanksgift-app",
+      "confirmColumnID": "2383207"
+    }
+  ]
+}
